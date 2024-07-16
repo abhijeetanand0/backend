@@ -3,6 +3,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK
 
 
 def error_response(message):
+    print("ERROR: ", message)
     return Response({
         "result": "error",
         "message": message,
@@ -10,6 +11,8 @@ def error_response(message):
 
 
 def success_response(data):
+    print("SUCCESS: ", data)
+
     return Response({
         "result": "success",
         "data": data,

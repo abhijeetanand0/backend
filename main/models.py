@@ -38,6 +38,7 @@ class Student(models.Model):
     year = models.IntegerField(null=False, blank=False)
     department = models.CharField(max_length=50, null=False, blank=False)
     roll = models.CharField(max_length=20, null=False, blank=False)
+    picture = models.ImageField(blank=True, null=True, upload_to='profile_pic')
 
     def __str__(self):
         return f"{self.year} - {self.name}"
@@ -64,16 +65,21 @@ class AttendanceEntry(models.Model):
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
     by = models.ForeignKey(User, on_delete=models.CASCADE)
     time = models.DateTimeField(blank=False, null=False)
+    picture=  models.ImageField(blank=True, null=True, upload_to='attendance')
+
+
+
+class ToiletEntry(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
+    start = models.DateTimeField(blank=False)
+    end = models.DateTimeField(blank=True, null=False)
+    has_ended = models.BooleanField(default=False)
+
+
 
 
 
     # def __str__(self):
 
-
-class StudentPicture(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    picture = models.ImageField()
-
-    def __str__(self):
-        return f"{self.student.name}"
 

@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .common import error_response, success_response
-from .models import TACourse, Exam, StudentCourse, Course, Student, AttendanceEntry
+from .models import TACourse, Exam, StudentCourse, Course, Student, AttendanceEntry, ToiletEntry
 from datetime import date
 
 from .serializers import CourseSerializer, ExamSerializer, StudentSerializer
@@ -56,10 +56,8 @@ def get_students(request, course_id, exam_id):
             return error_response("Invalid exam id!")
         course = Course.objects.get(id=course_id)
         exam = Exam.objects.get(id=exam_id)
-        print(exam.title)
 
         relations = StudentCourse.objects.filter(course=course)
-        print(list(relations))
 
         students = []
         present_count = 0
@@ -109,12 +107,13 @@ def mark_attendance(request, exam_id, student_id):
         if not Student.objects.filter(id=student_id):
             return error_response("Invalid student id")
 
+        img = request.FILES['img']
         exam = Exam.objects.get(id=exam_id)
         student = Student.objects.get(id=student_id)
 
         if AttendanceEntry.objects.filter(student=student, exam=exam).exists():
             return success_response("Attendance already taken!")
-        entry = AttendanceEntry(student=student, exam=exam, by=ta, time=datetime.now())
+        entry = AttendanceEntry(student=student, exam=exam, by=ta, time=datetime.now(), picture=img)
         entry.save()
         return success_response("Attendance added successfully!")
     except:
@@ -123,13 +122,80 @@ def mark_attendance(request, exam_id, student_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_student_details(request, roll):
-    print(roll);
     if not Student.objects.filter(roll=roll).exists():
         return error_response("Student not found!")
     student = Student.objects.get(roll=roll)
     serializer = StudentSerializer(student)
-    return success_response(serializer.data)
+    data = serializer.data
+    data['profile_pic'] = student.picture.name
+    return success_response(data)
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_toilet_details(request, exam_id):
+    try:
+        if not Exam.objects.filter(id=exam_id).exists():
+            return error_response("Invalid exam id")
+
+        exam = Exam.objects.get(id=exam_id)
+
+        data = {"count": 0, "student": None, "start": None}
+        if not ToiletEntry.objects.filter(exam=exam, has_ended=False).exists():
+            return success_response(data)
+
+        entry = ToiletEntry.objects.get(exam=exam, has_ended=False)
+        student = entry.student
+        data["count"] = 1
+        data["student"] = {"roll": student.roll, "id": student.id, "name": student.name, "department": student.department}
+        data['start'] = entry.start
+        return success_response(data)
+    except:
+        return error_response("Something went wrong!")
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def add_toilet_entry(request, exam_id, roll):
+    try:
+        if not Exam.objects.filter(id=exam_id).exists():
+            return error_response("Invalid exam id")
+
+        if not Student.objects.filter(roll=roll).exists():
+            return error_response("Invalid roll number")
+
+        exam = Exam.objects.get(id=exam_id)
+        student = Student.objects.get(roll=roll)
+
+        if ToiletEntry.objects.filter(exam=exam, has_ended=False).exists():
+            return error_response("Someone already exists")
+        toilet_entry = ToiletEntry.objects.create(exam=exam, student=student, start=datetime.now().astimezone(), end=datetime.now().astimezone())
+
+        toilet_entry.save()
+        return success_response("Student added successfully")
+    except Exception as e:
+        return error_response("Something went wrong!")
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def clear_toilet(request, exam_id):
+    try:
+        if not Exam.objects.filter(id=exam_id).exists():
+            return error_response("Invalid exam id")
+
+        exam = Exam.objects.get(id=exam_id)
+        if not ToiletEntry.objects.filter(exam=exam, has_ended=False).exists():
+            return success_response({})
+
+        entries = ToiletEntry.objects.filter(exam=exam)
+        for entry in entries:
+            entry.end = datetime.now()
+            entry.has_ended = True
+            entry.save()
+
+        return success_response({})
+
+    except:
+        return error_response("Something went wrong!")
 
 
 
